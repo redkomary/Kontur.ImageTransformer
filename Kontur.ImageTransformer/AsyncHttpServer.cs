@@ -1,6 +1,8 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -87,19 +89,116 @@ namespace Kontur.ImageTransformer
             }
         }
 
-        private async Task HandleContextAsync(HttpListenerContext listenerContext)
-        {
-            // TODO: implement request handling
+		private async Task HandleContextAsync(HttpListenerContext listenerContext)
+		{
+			// TODO: implement request handling
+			var request = listenerContext.Request;
+			if (request.HttpMethod != HttpMethod.Post.Method)
+			{
+				BadResponse(listenerContext.Response);
+				return;
+			}
 
-            listenerContext.Response.StatusCode = (int)HttpStatusCode.OK;
-            using (var writer = new StreamWriter(listenerContext.Response.OutputStream))
-                writer.WriteLine("Hello, world!");
-        }
+			string[] @urlParams = listenerContext.Request.Url
+				.Segments
+				.Skip(1)
+				.Select(s => s.Replace("/", ""))
+				.ToArray();
 
-        private readonly HttpListener listener;
+			if (@urlParams.Length < 3)
+			{
+				BadResponse(listenerContext.Response);
+				return;
+			}
 
-        private Thread listenerThread;
-        private bool disposed;
-        private volatile bool isRunning;
-    }
+			if (@urlParams[0] != "process")
+			{
+				BadResponse(listenerContext.Response);
+				return;
+			}
+
+			var transformMethod = TryParseTransformMethod(@urlParams[1]);
+			if (transformMethod == null)
+			{
+				BadResponse(listenerContext.Response);
+				return;
+			}
+
+			int[] coordArgs = TryParseCoords(@urlParams[2]);
+			if (coordArgs == null)
+			{
+				BadResponse(listenerContext.Response);
+				return;
+			}
+
+			GoodResponse(listenerContext.Response);
+		}
+
+		private TransformMethods? TryParseTransformMethod(string transformValue)
+		{
+			switch (transformValue)
+			{
+				case "rotate-cw":
+					return TransformMethods.RotateCw;
+				case "rotate-ccw":
+					return TransformMethods.RotateCcw;
+				case "flip-v":
+					return TransformMethods.FlipV;
+				case "flip-h":
+					return TransformMethods.FlipH;
+				default:
+					return null;
+			}
+		}
+
+		private int[] TryParseCoords(string coordsValue)
+		{
+			string[] args = coordsValue.Split(',').ToArray();
+			if (args.Length != 4)
+				return null;
+
+			var result = new int[4];
+			for (int i = 0; i < args.Length; i++)
+			{
+				bool parsed = int.TryParse(args[i], out int value);
+				if (!parsed)
+					return null;
+
+				result[i] = value;
+			}
+
+			return result;
+		}
+
+		private void GoodResponse(HttpListenerResponse response)
+		{
+			response.StatusCode = (int)HttpStatusCode.OK;
+			using (var writer = new StreamWriter(response.OutputStream))
+				writer.WriteLine("Hello, world!");
+		}
+
+		private void BadResponse(HttpListenerResponse response)
+		{
+			response.StatusCode = (int)HttpStatusCode.BadRequest;
+		}
+
+		private void EmptyResponse(HttpListenerResponse response)
+		{
+			response.StatusCode = (int)HttpStatusCode.NoContent;
+		}
+
+		private readonly HttpListener listener;
+
+		private Thread listenerThread;
+		private bool disposed;
+		private volatile bool isRunning;
+
+		private enum TransformMethods
+		{
+			RotateCw,
+			RotateCcw,
+			FlipV,
+			FlipH
+		}
+	}
 }
