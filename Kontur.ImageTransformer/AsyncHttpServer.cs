@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -8,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Kontur.ImageTransformer
 {
-    internal class AsyncHttpServer : IDisposable
+	internal class AsyncHttpServer : IDisposable
     {
         public AsyncHttpServer()
         {
@@ -89,85 +88,24 @@ namespace Kontur.ImageTransformer
             }
         }
 
-		private async Task HandleContextAsync(HttpListenerContext listenerContext)
-		{
-			// TODO: implement request handling
-			var request = listenerContext.Request;
+        private async Task HandleContextAsync(HttpListenerContext listenerContext)
+        {
+	        // TODO: implement request handling
+	        var request = listenerContext.Request;
 			if (request.HttpMethod != HttpMethod.Post.Method)
-			{
-				BadResponse(listenerContext.Response);
-				return;
-			}
+	        {
+		        BadResponse(listenerContext.Response);
+		        return;
+	        }
 
-			string[] @urlParams = listenerContext.Request.Url
-				.Segments
-				.Skip(1)
-				.Select(s => s.Replace("/", ""))
-				.ToArray();
-
-			if (@urlParams.Length < 3)
-			{
-				BadResponse(listenerContext.Response);
-				return;
-			}
-
-			if (@urlParams[0] != "process")
-			{
-				BadResponse(listenerContext.Response);
-				return;
-			}
-
-			var transformMethod = TryParseTransformMethod(@urlParams[1]);
-			if (transformMethod == null)
-			{
-				BadResponse(listenerContext.Response);
-				return;
-			}
-
-			int[] coordArgs = TryParseCoords(@urlParams[2]);
-			if (coordArgs == null)
-			{
-				BadResponse(listenerContext.Response);
-				return;
+	        bool parsed = ImageTransformRequest.TryParse(request.Url, out ImageTransformRequest requestParams);
+	        if (!parsed)
+	        {
+		        BadResponse(listenerContext.Response);
+		        return;
 			}
 
 			GoodResponse(listenerContext.Response);
-		}
-
-		private TransformMethods? TryParseTransformMethod(string transformValue)
-		{
-			switch (transformValue)
-			{
-				case "rotate-cw":
-					return TransformMethods.RotateCw;
-				case "rotate-ccw":
-					return TransformMethods.RotateCcw;
-				case "flip-v":
-					return TransformMethods.FlipV;
-				case "flip-h":
-					return TransformMethods.FlipH;
-				default:
-					return null;
-			}
-		}
-
-		private int[] TryParseCoords(string coordsValue)
-		{
-			string[] args = coordsValue.Split(',').ToArray();
-			if (args.Length != 4)
-				return null;
-
-			var result = new int[4];
-			for (int i = 0; i < args.Length; i++)
-			{
-				bool parsed = int.TryParse(args[i], out int value);
-				if (!parsed)
-					return null;
-
-				result[i] = value;
-			}
-
-			return result;
 		}
 
 		private void GoodResponse(HttpListenerResponse response)
@@ -192,13 +130,5 @@ namespace Kontur.ImageTransformer
 		private Thread listenerThread;
 		private bool disposed;
 		private volatile bool isRunning;
-
-		private enum TransformMethods
-		{
-			RotateCw,
-			RotateCcw,
-			FlipV,
-			FlipH
-		}
 	}
 }

@@ -47,6 +47,10 @@
     <Compile Include="EntryPoint.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="AsyncHttpServer.cs" />
+    <Compile Include="Extensions\EnumExtensions.cs" />
+    <Compile Include="RequestParams\ImageCoordinates.cs" />
+    <Compile Include="RequestParams\ImageTransformRequest.cs" />
+    <Compile Include="RequestParams\TransformMethod.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
